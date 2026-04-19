@@ -1,0 +1,44 @@
+# Laravel specific
+/bootstrap/cache/
+/public/build/
+/storage/
+.env
+.env.backup
+.env.production
+Homestead.json
+Homestead.yaml
+.phpunit.result.cache
+/vendor/
+/composer.lock
+
+# Node.js specific
+/node_modules/
+npm-debug.log
+yarn-error.log
+.pnpm-store/
+dist/
+build/
+
+# IDE specific
+.idea/
+.vscode/
+.nova/
+.zed/
+.fleet/
+*.sublime-*
+*.DS_Store
+Thumbs.db
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Other common ignores
+/.phpunit.cache
+/public/hot
+/resources/js/actions
+/resources/js/routes
+/resources/js/wayfinder
+/storage/*.key
+/storage/pail
+/auth.json

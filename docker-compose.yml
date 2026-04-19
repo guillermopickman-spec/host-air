@@ -1,0 +1,54 @@
+services:
+  # PHP Development Server
+  app:
+    image: php:8.4-apache
+    container_name: host-air-app
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www/html
+    working_dir: /var/www/html
+    command: >
+      bash -c "sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/public|g' /etc/apache2/sites-available/000-default.conf &&
+               echo '<Directory /var/www/html/public>
+                       AllowOverride All
+                       Require all granted
+                     </Directory>' >> /etc/apache2/apache2.conf &&
+               chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database &&
+               a2enmod rewrite && 
+               apache2-foreground"
+
+  # Database
+  db:
+    image: mysql:8.0
+    container_name: host-air-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: hostair_host
+      MYSQL_USER: hostair
+      MYSQL_PASSWORD: hostair
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  # Node.js for frontend development
+  frontend:
+    image: node:22-alpine  # Fixed: Now using Node 22 for Vite 7 compatibility
+    container_name: host-air-frontend
+    working_dir: /app
+    volumes:
+      - .:/app
+      # This anonymous volume prevents your local node_modules from 
+      # overwriting the container's version if they are different OS architectures
+      - /app/node_modules 
+    ports:
+      - "5173:5173"
+    command: >
+      sh -c "npm install && npm run dev -- --host"
+    depends_on:
+      - app
+
+volumes:
+  db_data:
