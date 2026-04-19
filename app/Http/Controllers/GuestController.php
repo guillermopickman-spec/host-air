@@ -23,20 +23,17 @@ class GuestController extends Controller
 
     /**
      * Store a newly created guest in storage.
-     * Optionally attach to a booking if booking_id provided.
+     * Optionally attach to a booking if booking_ids provided.
      */
     public function store(StoreGuestRequest $request): JsonResponse
     {
         try {
             $guest = Guest::create($request->validated());
 
-            // If booking_id is provided, attach guest to that booking
-            if ($request->has('booking_id')) {
-                $booking = Booking::find($request->booking_id);
-                if ($booking) {
-                    $booking->guests()->attach($guest);
-                    $guest->load('bookings'); // Reload with relationships
-                }
+            // If booking_ids are provided, attach guest to those bookings
+            if ($request->has('booking_ids')) {
+                $guest->bookings()->attach($request->booking_ids);
+                $guest->load('bookings'); // Reload with relationships
             }
 
             return response()->json([
@@ -64,6 +61,13 @@ class GuestController extends Controller
     {
         try {
             $guest->update($request->validated());
+
+            // Handle booking_ids for updating
+            if ($request->has('booking_ids')) {
+                $guest->bookings()->sync($request->booking_ids); // Syncs new bookings, detaching old ones
+                $guest->load('bookings');
+            }
+
             return response()->json([
                 'message' => 'Guest updated successfully',
                 'guest' => $guest->load('bookings')

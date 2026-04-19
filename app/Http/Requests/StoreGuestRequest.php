@@ -20,7 +20,8 @@ class StoreGuestRequest extends FormRequest
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'nullable|string|max:20',
-            'booking_id' => 'sometimes|exists:bookings,id',
+            'booking_ids' => 'sometimes|array',
+            'booking_ids.*' => 'exists:bookings,id',
         ];
     }
 }

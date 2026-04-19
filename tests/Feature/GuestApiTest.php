@@ -25,7 +25,7 @@ class GuestApiTest extends TestCase
             'name' => 'John Doe',
             'email' => 'john.doe@example.com',
             'phone' => '+1234567890',
-            'booking_id' => $booking->id,
+            'booking_ids' => [$booking->id], // Use booking_ids for many-to-many
         ];
 
         $response = $this->postJson('/api/guests', $guestData);
@@ -37,7 +37,9 @@ class GuestApiTest extends TestCase
                          'name' => 'John Doe',
                          'email' => 'john.doe@example.com',
                          'phone' => '+1234567890',
-                         'booking_id' => $booking->id,
+                         'bookings' => [
+                             ['id' => $booking->id]
+                         ] // Expect bookings array
                      ]
                  ]);
 
@@ -46,6 +48,12 @@ class GuestApiTest extends TestCase
             'name' => 'John Doe',
             'email' => 'john.doe@example.com',
             'phone' => '+1234567890',
+        ]);
+
+        // Verify pivot table entry
+        $guest = Guest::where('email', 'john.doe@example.com')->first();
+        $this->assertDatabaseHas('booking_guest', [
+            'guest_id' => $guest->id,
             'booking_id' => $booking->id,
         ]);
     }
@@ -61,7 +69,7 @@ class GuestApiTest extends TestCase
 
         // Test missing required fields
         $response = $this->postJson('/api/guests', [
-            'booking_id' => $booking->id,
+            'booking_ids' => [$booking->id],
         ]);
 
         $response->assertStatus(422)
@@ -71,7 +79,7 @@ class GuestApiTest extends TestCase
         $response = $this->postJson('/api/guests', [
             'name' => 'John Doe',
             'email' => 'invalid-email',
-            'booking_id' => $booking->id,
+            'booking_ids' => [$booking->id],
         ]);
 
         $response->assertStatus(422)
@@ -81,11 +89,11 @@ class GuestApiTest extends TestCase
         $response = $this->postJson('/api/guests', [
             'name' => 'John Doe',
             'email' => 'john.doe@example.com',
-            'booking_id' => 99999,
+            'booking_ids' => [99999],
         ]);
 
         $response->assertStatus(422)
-                 ->assertJsonValidationErrors(['booking_id']);
+                 ->assertJsonValidationErrors(['booking_ids.0']);
     }
 
     /**
@@ -97,15 +105,16 @@ class GuestApiTest extends TestCase
     {
         $booking = Booking::factory()->create();
         $guest = Guest::factory()->create([
-            'booking_id' => $booking->id,
             'name' => 'Original Name',
             'email' => 'original@example.com',
         ]);
+        $guest->bookings()->attach($booking->id);
 
         $updateData = [
             'name' => 'Updated Name',
             'email' => 'updated@example.com',
             'phone' => '+0987654321',
+            'booking_ids' => [$booking->id], // Keep existing booking link
         ];
 
         $response = $this->putJson("/api/guests/{$guest->id}", $updateData);
@@ -117,6 +126,9 @@ class GuestApiTest extends TestCase
                          'name' => 'Updated Name',
                          'email' => 'updated@example.com',
                          'phone' => '+0987654321',
+                         'bookings' => [
+                             ['id' => $booking->id]
+                         ]
                      ]
                  ]);
 
@@ -126,6 +138,12 @@ class GuestApiTest extends TestCase
             'name' => 'Updated Name',
             'email' => 'updated@example.com',
             'phone' => '+0987654321',
+        ]);
+
+        // Verify pivot table entry still exists
+        $this->assertDatabaseHas('booking_guest', [
+            'guest_id' => $guest->id,
+            'booking_id' => $booking->id,
         ]);
     }
 
@@ -137,9 +155,8 @@ class GuestApiTest extends TestCase
     public function test_delete_guest()
     {
         $booking = Booking::factory()->create();
-        $guest = Guest::factory()->create([
-            'booking_id' => $booking->id,
-        ]);
+        $guest = Guest::factory()->create();
+        $guest->bookings()->attach($booking->id);
 
         $response = $this->deleteJson("/api/guests/{$guest->id}");
 
@@ -151,6 +168,12 @@ class GuestApiTest extends TestCase
         // Verify guest was deleted from database
         $this->assertDatabaseMissing('guests', [
             'id' => $guest->id,
+        ]);
+
+        // Verify pivot table entry was also deleted
+        $this->assertDatabaseMissing('booking_guest', [
+            'guest_id' => $guest->id,
+            'booking_id' => $booking->id,
         ]);
     }
 
@@ -165,16 +188,16 @@ class GuestApiTest extends TestCase
         $booking2 = Booking::factory()->create();
 
         $guest1 = Guest::factory()->create([
-            'booking_id' => $booking1->id,
             'name' => 'Guest 1',
             'email' => 'guest1@example.com',
         ]);
+        $guest1->bookings()->attach($booking1->id);
 
         $guest2 = Guest::factory()->create([
-            'booking_id' => $booking1->id,
             'name' => 'Guest 2',
             'email' => 'guest2@example.com',
         ]);
+        $guest2->bookings()->attach($booking1->id);
 
         // Booking 2 has no guests
 
@@ -182,21 +205,19 @@ class GuestApiTest extends TestCase
 
         $response->assertStatus(200)
                  ->assertJsonCount(2) // Should return 2 bookings
-                 ->assertJsonFragment([
-                     'id' => $booking1->id,
-                 ])
-                 ->assertJsonFragment([
-                     'id' => $booking2->id,
+                 ->assertJson([ // Assert the overall structure and content
+                     [
+                         'id' => $booking1->id,
+                         'guests' => [
+                             ['id' => $guest1->id, 'name' => 'Guest 1', 'email' => 'guest1@example.com'],
+                             ['id' => $guest2->id, 'name' => 'Guest 2', 'email' => 'guest2@example.com'],
+                         ]
+                     ],
+                     [
+                         'id' => $booking2->id,
+                         'guests' => [] // Booking 2 has no guests
+                     ]
                  ]);
-
-        // Check that booking1 has guests
-        $responseData = $response->json();
-        $booking1Data = collect($responseData)->firstWhere('id', $booking1->id);
-        $this->assertCount(2, $booking1Data['guests']);
-
-        // Check that booking2 has no guests
-        $booking2Data = collect($responseData)->firstWhere('id', $booking2->id);
-        $this->assertCount(0, $booking2Data['guests']);
     }
 
     /**

@@ -40,8 +40,9 @@ class BookingModelTest extends TestCase
     public function test_booking_has_many_guests_relationship()
     {
         $booking = Booking::factory()->create();
-        $guest1 = Guest::factory()->create(['booking_id' => $booking->id]);
-        $guest2 = Guest::factory()->create(['booking_id' => $booking->id]);
+        $guest1 = Guest::factory()->create();
+        $guest2 = Guest::factory()->create();
+        $booking->guests()->attach([$guest1->id, $guest2->id]);
 
         $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $booking->guests);
         $this->assertCount(2, $booking->guests);
