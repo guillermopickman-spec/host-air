@@ -3,14 +3,15 @@
 A modern web application for managing bookings and guest data for touristic apartments, built with Laravel and Vue.js.
 
 ![Laravel](https://img.shields.io/badge/Laravel-10.x-orange.svg)
+[![Laravel](https://github.com/guillermopickman-spec/host-air/actions/workflows/laravel.yml/badge.svg)](https://github.com/guillermopickman-spec/host-air/actions/workflows/laravel.yml)
 ![Vue.js](https://img.shields.io/badge/Vue.js-3.x-green.svg)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.x-blue.svg)
 ![SQLite](https://img.shields.io/badge/SQLite-Database-lightgrey.svg)
 
 ## 🎨 Screenshots
 
-![Application Screenshot](screenshots/image1.PNG)
-![Application Screenshot](screenshots/image2.PNG)
+![Application Screenshot](public/images/image1.PNG)
+![Application Screenshot](public/images/image2.PNG)
 
 ## ✨ Features
 
